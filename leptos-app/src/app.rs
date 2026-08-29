@@ -5,19 +5,60 @@ use leptos_router::{
     StaticSegment,
 };
 
+// App modules
+mod blog;
+mod home;
+mod projects;
+
+use crate::components;
+
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
         <html lang="en">
             <head>
-                <meta charset="utf-8"/>
-                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <AutoReload options=options.clone() />
-                <HydrationScripts options/>
-                <MetaTags/>
+                <HydrationScripts options />
+                <MetaTags />
+
+                // favicon
+                <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+
+                // tailwind
+                <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+                // Google Fonts Prelude
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+                // Space Mono
+                <link
+                    href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+                    rel="stylesheet"
+                />
+                // Space Grotesk
+                <link
+                    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+                    rel="stylesheet"
+                />
+
             </head>
             <body>
-                <App/>
+                <App />
+
+                <style>
+                    "html,
+                    .font-sans {
+                      font-family: \"Space Grotesk\", sans-serif;
+                      font-size: 16px;
+                    }
+                    
+                    .font-mono {
+                      font-family: \"Space Mono\", sans-serif;
+                      font-size: 16px;
+                    }"
+                </style>
             </body>
         </html>
     }
@@ -31,31 +72,31 @@ pub fn App() -> impl IntoView {
     view! {
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
-        <Stylesheet id="leptos" href="/pkg/leptos-app.css"/>
+        <Stylesheet id="leptos" href="/pkg/leptos-app.css" />
 
         // sets the document title
-        <Title text="Welcome to Leptos"/>
+        <Title text="themosthigh" />
 
-        // content for this welcome page
-        <Router>
-            <main>
-                <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=StaticSegment("") view=HomePage/>
-                </Routes>
-            </main>
-        </Router>
-    }
-}
+        <div class="flex flex-col min-h-screen bg-black text-white">
 
-/// Renders the home page of your application.
-#[component]
-fn HomePage() -> impl IntoView {
-    // Creates a reactive value to update the button
-    let count = RwSignal::new(0);
-    let on_click = move |_| *count.write() += 1;
+            // content for this welcome page
+            <Router>
 
-    view! {
-        <h1>"Welcome to Leptos!"</h1>
-        <button on:click=on_click>"Click Me: " {count}</button>
+                // Top navigation bar
+                <components::nav::MainNavigationBar />
+
+                // Main content
+                <main class="flex flex-col flex-1">
+                    <Routes fallback=|| "Page not found.".into_view()>
+                        <Route path=StaticSegment("") view=home::HomePage />
+                        <Route path=StaticSegment("projects") view=projects::ProjectsPage />
+                        <Route path=StaticSegment("blog") view=blog::BlogPage />
+                    </Routes>
+                </main>
+
+                // Footer content
+                <components::footer::Footer />
+            </Router>
+        </div>
     }
 }
