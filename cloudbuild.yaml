@@ -1,0 +1,64 @@
+substitutions:
+  _REGION: us-central1
+  _REPO: app-images # Artifact Registry repo name
+  _SERVICE: leptos-app # Cloud Run service name
+  _IMAGE: "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}"
+
+options:
+  machineType: "E2_HIGHCPU_32" # Rust compiles are CPU-bound; parallelize hard
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  # 1. Pull the last successful image to seed Docker's layer cache.
+  #    Failure is fine on first-ever build (image won't exist yet).
+  - id: pull-cache
+    name: "gcr.io/cloud-builders/docker"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        docker pull ${_IMAGE}:latest || exit 0
+
+  # 2. Build, using the pulled image as a cache source.
+  #    BuildKit inline cache lets --cache-from reuse cargo-chef's
+  #    dependency-cook layer even when app code changed.
+  - id: build
+    name: "gcr.io/cloud-builders/docker"
+    env:
+      - "DOCKER_BUILDKIT=1"
+    args:
+      - "build"
+      - "--cache-from=${_IMAGE}:latest"
+      - "--build-arg=BUILDKIT_INLINE_CACHE=1"
+      - "-t=${_IMAGE}:${SHORT_SHA}"
+      - "-t=${_IMAGE}:latest"
+      - "-f=Dockerfile"
+      - "." # repo-root build context (Option A)
+
+  # 3. Push both tags to Artifact Registry.
+  - id: push
+    name: "gcr.io/cloud-builders/docker"
+    args: ["push", "--all-tags", "${_IMAGE}"]
+
+  # 4. Deploy to Cloud Run.
+  - id: deploy
+    name: "gcr.io/google-cloud-sdk/slim"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE}"
+      - "--image=${_IMAGE}:${SHORT_SHA}"
+      - "--region=${_REGION}"
+      - "--platform=managed"
+      - "--allow-unauthenticated"
+      - "--port=8080"
+      - "--cpu=2"
+      - "--memory=512Mi"
+      - "--min-instances=0"
+      - "--max-instances=10"
+
+images:
+  - "${_IMAGE}:${SHORT_SHA}"
+  - "${_IMAGE}:latest"
+
+timeout: 1800s # 30 min ceiling; cached builds should land in 2-4 min
